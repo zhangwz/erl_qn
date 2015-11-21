@@ -1,0 +1,16 @@
+{application, erl_qn,
+  [
+    {description, ""},
+    {vsn, "1"},
+    {registered, []},
+    {applications, [crypto,
+      ssl,
+      inets,
+      jsx,
+      base64url,
+      kernel,
+      stdlib
+    ]},
+    {modules, []},
+    {env, []}
+  ]}.
