@@ -11,12 +11,16 @@
 
 -include("config.hrl").
 
+-import(untils, [urlsafe_base64_encode/1, urlsafe_base64_decode/1, entry/1, entry/2, etag_small_stream/1]).
+
 %% API
 
 -export([upload_token/1, upload_token/2, upload_token/3]).
 -export([private_download_url/1, private_download_url/2]).
-%%-export([access_token/1]).
-%%-export([verify_callback/3, verify_callback/4]).
+-export([requests_auth/1]).
+-export([verify_callback/3, verify_callback/4]).
+-export([urlparse/1]).
+-export([token_of_request/4]).
 
 upload_token(Bucket) ->
   upload_token(Bucket, ?DEF_KEY, ?DEF_PUTPOLICY).
@@ -27,11 +31,11 @@ upload_token(Bucket, Key) ->
 upload_token(Bucket, Key, PutPolicy) ->
 
   Right_PutPolicy = maps:without(?PUTPOLICY, maps:from_list(PutPolicy)),
-  URLbase64_PutPolicy = urlbase64(putpolicy(Bucket, Key, PutPolicy)),
+  URLbase64_PutPolicy = urlsafe_base64_encode(putpolicy(Bucket, Key, PutPolicy)),
 
   if
     Right_PutPolicy =:= #{} ->
-      ?AK1 ++ ":" ++ sign(URLbase64_PutPolicy) ++ ":" ++ URLbase64_PutPolicy;
+      sign(URLbase64_PutPolicy, 1) ++ ":" ++ URLbase64_PutPolicy;
     Right_PutPolicy =/= #{} ->
       io:format("Please give me the FUCKING correct putpolicy ")
   end.
@@ -41,18 +45,34 @@ private_download_url(URL) ->
 
 private_download_url(URL, Down_Expires) ->
   DownloadURL = URL ++ "?e=" ++ integer_to_list(expires_time(Down_Expires)),
-  DownloadURL ++ "&token=" ++ ?AK1 ++ ":" ++ sign(DownloadURL).
+  DownloadURL ++ "&token=" ++ sign(DownloadURL, 1).
 
-%%token_of_request(URL, Body, Content_type) ->
+verify_callback(Origin_authorization, URL, Body) ->
+  verify_callback(Origin_authorization, URL, Body, ?DEF_CONTENT_TYPE).
+
+verify_callback(Origin_authorization, URL, Body, Content_type) ->
+  AK_part = string:substr(Origin_authorization, 6, 5),
+  AK1_part = string:substr(?AK1, 1, 5),
+  if
+    AK_part =:= AK1_part ->
+      Origin_authorization =:= "QBox " ++ token_of_request(URL, Body, Content_type, 1);
+    true ->
+      Origin_authorization =:= "QBox " ++ token_of_request(URL, Body, Content_type, 2)
+
+end.
+
+requests_auth(URL) ->
+  requests_auth(URL, [], ?DEF_CONTENT_TYPE).
+
+requests_auth(URL, Body, Content_type) ->
+  "QBox" ++ token_of_request(URL, Body, Content_type, 1).
 
 
-%%verify_callback(Origin_authorization, URL, Body) ->
- %% verify_callback(Origin_authorization, URL, Body, ?DEF_CONTENT_TYPE).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%verify_callback(Origin_authorization, URL, Body, Content_type) ->
-
-
-%%access_token()
 
 expires_time(Expires) ->
   {M, S, _} = os:timestamp(),
@@ -62,21 +82,42 @@ putpolicy(Bucket, Key, PutPolicy) ->
   Deadline = [{<<"deadline">>, expires_time(?UP_EXPIRES)}],
 
   Scope = [{<<"scope">>,
-    list_to_binary(string:strip(Bucket ++ ":" ++ Key, right, $:))}],
+            list_to_binary(entry(Bucket, Key))}],
 
   binary:bin_to_list(jsx:encode
   (lists:append
   (lists:append(PutPolicy, Deadline),
     Scope))).
 
-urlbase64(Data) ->
-  binary:bin_to_list(base64url:encode_mime(Data)).
 
-sign(Data) ->
-  binary:bin_to_list(base64url:encode_mime(crypto:hmac(sha, ?SK2, Data))).
+sign(Data, Num_key) ->
+  if
+    Num_key =:= 1 ->
+  ?AK1 ++ ":" ++ urlsafe_base64_encode(crypto:hmac(sha, ?SK1, Data));
+    true ->
+      ?AK2 ++ ":" ++ urlsafe_base64_encode(crypto:hmac(sha, ?SK2, Data))
+  end.
 
-token_of_request
-token_of_request(URL, Body, Content_type) ->
+urlparse(URL) ->
+  {ok, {_, _, _, _, P, Q}} = http_uri:parse(URL),
+  {P, Q}.
+
+token_of_request(URL, Body, Content_type, Num_key) ->
+  {Path, Query} = urlparse(URL),
+
+  if
+    Body =:= [] ->
+      sign(Path ++ Query ++ "\n", Num_key);
+    true ->
+      if
+        Content_type =:= "application/json" ->
+      sign(Path ++ Query ++ "\n", 1);
+        true ->
+           sign(Path ++  Query ++ "\n" ++ Body, Num_key)
+      end
+  end.
+
+
 
 
 
