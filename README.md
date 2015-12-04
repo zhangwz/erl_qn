@@ -47,3 +47,5 @@ USAGE：
 5、 bucket就是资源管理操作
 
 6、 http里封装了get和post请求，另外包括重试和针对不同http status code给不同的结果，比如可能有问题的情况下，会多给一个reqid方便去查日志
+
+PS: 别忘了inets:start().
