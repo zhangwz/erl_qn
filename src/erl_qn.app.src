@@ -7,7 +7,6 @@
       ssl,
       inets,
       jsx,
-      base64url,
       kernel,
       stdlib
     ]},
