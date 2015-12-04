@@ -1,14 +1,15 @@
 -module(erl_qn).
 %% Application callbacks
--export([start/2, stop/1]).
--include("config.hrl").
+-export([start/0]).
+
+-define(APP, erl_qn).
 %% ===================================================================
 %% Application
 %% ===================================================================
 
 
-start(_StartType, _StartArgs) ->
-    erl_qn_sup:start_link().
-
-stop(_State) ->
-    ok.
+start() ->
+    application:load(?APP),
+    {ok, Apps} = application:get_key(?APP, applications),
+    [application:start(App) || App <- Apps],
+    application:start(?APP).

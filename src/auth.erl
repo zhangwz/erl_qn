@@ -17,10 +17,9 @@
 
 -export([upload_token/1, upload_token/2, upload_token/3]).
 -export([private_download_url/1, private_download_url/2]).
--export([requests_auth/1]).
 -export([verify_callback/3, verify_callback/4]).
 -export([urlparse/1]).
--export([token_of_request/4]).
+-export([requests_auth/1, requests_auth/3]).
 
 upload_token(Bucket) ->
     upload_token(Bucket, ?DEF_KEY, ?DEF_PUTPOLICY).
@@ -28,9 +27,9 @@ upload_token(Bucket, Key) ->
     upload_token(Bucket, Key, ?DEF_PUTPOLICY).
 upload_token(Bucket, Key, PutPolicy) ->
     Right_PutPolicy = maps:without(?PUTPOLICY, maps:from_list(PutPolicy)),
-    URLbase64_PutPolicy = urlsafe_base64_encode(putpolicy(Bucket, Key, PutPolicy)),
     if
         Right_PutPolicy =:= #{} ->
+            URLbase64_PutPolicy = urlsafe_base64_encode(putpolicy(Bucket, Key, PutPolicy)),
             sign(URLbase64_PutPolicy, 1) ++ ":" ++ URLbase64_PutPolicy;
         Right_PutPolicy =/= #{} ->
             io:format("Please give me the FUCKING correct putpolicy ")
