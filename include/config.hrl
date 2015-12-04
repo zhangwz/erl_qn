@@ -47,12 +47,6 @@
 -define(DEF_CONTENT_TYPE, "application/x-www-form-urlencoded").
 
 
-%% connection
--define(CONNECTION_TIMEOUT, 30).
--define(CONNECTION_RETRIES, 3).
--define(CONNECTION_POOL, 10).
-
-
 %% others
 %% 4MB
 -define(BLOCK_SIZE, 4194304).
