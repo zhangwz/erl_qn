@@ -21,11 +21,31 @@
 %% API
 -compile(export_all).
 
-put_file(File_path, Bucket) ->
-    put_file([], File_path, Bucket).
-put_file(Putpolicy, File_path, Bucket) ->
-    put_file(Putpolicy, File_path, Bucket, []).
-put_file(Putpolicy, File_path, Bucket, Key) ->
+
+up(File_path, Bucket) ->
+    up([], File_path, Bucket).
+up(Putpolicy, File_path, Bucket) ->
+    up(Putpolicy, File_path, Bucket, []).
+up(Putpolicy, File_path, Bucket, Key) ->
+    {ok, FInfo} = file:read_file_info(File_path),
+    Fsize = FInfo#file_info.size,
+    if
+        Fsize >= 5 * ?BLOCK_SIZE ->
+            {ok, File} = file:open(File_path, [read, binary]),
+            try
+                bput(Putpolicy, File, Bucket, Key, Fsize)
+            after
+                file:close(File)
+            end;
+        true -> put_small_file(Putpolicy, File_path, Bucket, Key)
+    end.
+
+
+put_small_file(File_path, Bucket) ->
+    put_small_file([], File_path, Bucket).
+put_small_file(Putpolicy, File_path, Bucket) ->
+    put_small_file(Putpolicy, File_path, Bucket, []).
+put_small_file(Putpolicy, File_path, Bucket, Key) ->
     {ok, Data_bin} = file:read_file(File_path),
     put(Putpolicy, Data_bin, Bucket, Key).
 
@@ -33,15 +53,12 @@ put_file(Putpolicy, File_path, Bucket, Key) ->
 put_bin(Putpolicy, Data_bin, Bucket, Key) ->
     put(Putpolicy, Data_bin, Bucket, Key).
 
-bput(File_path, Bucket) ->
-    bput([], File_path, Bucket).
-bput(Putpolicy, File_path, Bucket) ->
-    bput(Putpolicy, File_path, Bucket,[]).
-bput(Putpolicy, File_path, Bucket, Key) ->
+bput(File, Bucket, Fsize) ->
+    bput([], File, Bucket, Fsize).
+bput(Putpolicy, File, Bucket, Fsize) ->
+    bput(Putpolicy, File, Bucket,[], Fsize).
+bput(Putpolicy, File, Bucket, Key, Fsize) ->
     Uptoken = upload_token(Bucket, Key, Putpolicy),
-    {ok, FInfo} = file:read_file_info(File_path),
-    Fsize = FInfo#file_info.size,
-    {ok, File} = file:open(File_path, [read, binary]),
     mkfile(File, Fsize, Key, Uptoken).
 
 
