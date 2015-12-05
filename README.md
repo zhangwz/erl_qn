@@ -22,6 +22,8 @@ PS：基本的东西都有了，另外什么校验putpolicy,上传重试，链�
 
 1、两种并行计算qetag的方法
 
+具体参考：https://github.com/templexxx/qetag
+
 2、奇怪的并行上传（分块）
 
 3、强行使用自带的http client，结果写个表单上传都非常苦逼，要自己手写boundary，组织表单
